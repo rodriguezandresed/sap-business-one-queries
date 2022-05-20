@@ -1,0 +1,1 @@
+SELECT T1.[ItemCode] as "Producto", T1.[DistNumber], T0.[OnHandQty],  T2.[BinCode] FROM OBBQ T0  INNER JOIN OBTN T1 ON T0.[SnBMDAbs] = T1.[AbsEntry] INNER JOIN OBIN T2 ON T0.[BinAbs] = T2.[AbsEntry] WHERE T1.[DistNumber]=[%0] AND T0.[OnHandQty]>0

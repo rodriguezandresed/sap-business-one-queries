@@ -1,0 +1,10 @@
+SELECT T0.[DocDate], T0.[DocNum], T0.[CardName] as "Cliente", T0.[DocTotal] as "SubTotal + IVA" ,T0.[DocTotal]+T0.[DiscSum]-T0.[VatSum] as SubTotal, SUM(T1.[Quantity] * T1.[Price]) AS "Total ($)", T0.[U_ORN_RUTAS_VENTAS], SUM(T1.[Quantity]) AS "Cantidad de Cajas"
+
+
+FROM OQUT T0  INNER JOIN QUT1 T1 ON T0.[DocEntry] = T1.[DocEntry] 
+
+
+WHERE T0.[CANCELED] = 'N' AND T0.[DocDate] BETWEEN [%0] AND [%1] AND T0.[DocStatus] ='O'  
+
+
+GROUP BY T0.[DocDate], T0.[CardName], T0.[DocTotal], T0.[U_ORN_RUTAS_VENTAS], T0.[U_ORN_NCON], T0.[DocNum], T0.[DocStatus], T0.[DiscSum],T0.[VatSum]
