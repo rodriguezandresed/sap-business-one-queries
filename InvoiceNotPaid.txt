@@ -1,0 +1,16 @@
+SELECT DATA.ACFACTURA AS "Acceso a Factura", DATA.CLIENTE as "Cliente", DATA.NUMFACTURA AS "Numero de Factura", DATA.TFACTURA AS "Total de la Factura", COALESCE(sum(DATA.PAGO),0) + COALESCE(SUM(DATA.ORDEN),0) as "Pagado", DATA.TFACTURA-(COALESCE(sum(DATA.PAGO),0) + COALESCE(SUM(DATA.ORDEN),0)) AS "Deben" FROM
+
+(SELECT DISTINCT t0.docentry AS "ACFACTURA", t3.CardName as "CLIENTE",T0.DOCNUM AS "NUMFACTURA",T0.DOCDATE AS "FFACTURA",T0.DOCTOTAL AS "TFACTURA", T1.SumApplied as "PAGO", T7.DocTotal as "ORDEN",
+
+COALESCE(T0.DOCTOTAL,0) - COALESCE(T7.DOCTOTAL,0)  - COALESCE(T1.SumApplied,0) AS "DEBEN"
+
+
+FROM OINV T0 LEFT JOIN RCT2 T1 ON T0.DOCENTRY=T1.DOCENTRY AND T0.OBJTYPE=T1.INVTYPE LEFT JOIN ORCT T2 ON T2.DOCNUM=T1.DOCNUM inner join ocrd t3 on t3.CardCode=t0.CardCode inner join ocrg t4 on t4.GroupCode=t3.GroupCode INNER JOIN INV1 T5 ON T0.[DocEntry] = T5.[DocEntry] left join RIN1 T6 on T6.[BaseEntry] = T5.Docentry and T6.[BaseLine] = T5.[LineNum] and T6.[BaseType] =13 left JOIN ORIN T7 ON T6.[DocEntry] = T7.[DocEntry] 
+
+
+
+where ( T0.[DocDate] >= [%0]) and ( T0.[DocDate] <=[%1] ) and T0.[DocType] NOT in ('S') 
+
+) AS DATA
+ 
+ group by DATA.ACFACTURA, DATA.CLIENTE, DATA.NUMFACTURA, DATA.TFACTURA

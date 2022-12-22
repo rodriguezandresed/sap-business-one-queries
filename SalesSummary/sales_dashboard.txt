@@ -1,0 +1,157 @@
+/*SELECT FROM [DBO].[JDT1] T0*/
+DECLARE @FechaIni datetime
+/*WHERE*/
+SET @FechaIni = /*T0.[RefDate]*/ '[%0]'
+
+/*SELECT FROM [DBO].[JDT1] T1*/
+DECLARE @FechaFin datetime
+/*WHERE*/
+SET @FechaFin = /*T1.[RefDate]*/'[%1]'
+
+/*SELECT FROM [DBO].[JDT1] T2*/
+DECLARE @FechaAct datetime
+/*WHERE*/
+SET @FechaAct = /*T2.[RefDate]*/ GETDATE()
+
+create table #ventas (num_cli nvarchar(40), vendido numeric(38,2));
+
+insert into #ventas(num_cli, vendido)
+
+(SELECT CASE 
+WHEN (QUOTE.RUTA  IS NULL) AND (DEVOLUCION.RUTA IS NULL) THEN INVOICE.RUTA
+WHEN (INVOICE.RUTA IS NULL) AND (DEVOLUCION.RUTA IS NULL) THEN  QUOTE.RUTA
+WHEN (INVOICE.RUTA IS NULL) AND (QUOTE.RUTA IS NULL) THEN  DEVOLUCION.RUTA
+ELSE INVOICE.RUTA
+END AS 'Ruta de Ventas',
+CASE 
+WHEN QUOTE.RUTA IS NULL THEN COALESCE(INVOICE.RESULTADO,0)-COALESCE(DEVOLUCION.RESULTADO,0)
+WHEN INVOICE.RESULTADO IS NULL  THEN COALESCE(QUOTE.RESULTADO,0)-COALESCE(DEVOLUCION.RESULTADO,0) 
+WHEN QUOTE.RESULTADO IS NULL AND INVOICE.RESULTADO IS NULL THEN 0 
+ELSE COALESCE(QUOTE.RESULTADO,0)+COALESCE(INVOICE.RESULTADO,0)-COALESCE(DEVOLUCION.RESULTADO,0)
+END AS "Resultado de Ventas" 
+FROM 
+
+(SELECT T0.[U_SALESMAN] AS 'RUTA', SUM(T1.[Quantity] ) AS 'RESULTADO'
+FROM OQUT T0  INNER JOIN QUT1 T1 ON T0.[DocEntry] = T1.[DocEntry]  WHERE (T0.[DocDate] BETWEEN @FechaIni AND @FechaFin ) AND (T0."CANCELED" = 'N') AND (T0."DocStatus" = 'O' ) and T0.[CardName] NOT in ('FARMATODO,C.A.') AND T1.Quantity>0  GROUP BY T0.[U_SALESMAN]) AS QUOTE 
+
+FULL OUTER JOIN 
+
+(SELECT T0.[U_SALESMAN] AS 'RUTA', SUM(T1.[Quantity]) AS 'RESULTADO'
+FROM OINV T0  INNER JOIN INV1 T1 ON T0.[DocEntry] = T1.[DocEntry]  WHERE (T0.[DocDate] BETWEEN @FechaIni AND @FechaFin )  and T0.[CardName] NOT in ('FARMATODO,C.A.') AND T1.Quantity>0 GROUP BY T0.[U_SALESMAN] ) AS  INVOICE ON QUOTE.RUTA = INVOICE.RUTA
+ 
+ FULL OUTER JOIN
+
+(SELECT T0.[U_SALESMAN] AS 'RUTA', 
+SUM(T1.[Quantity]) AS 'RESULTADO'
+FROM ORIN T0  INNER JOIN RIN1 T1 ON T0.[DocEntry] = T1.[DocEntry]  
+WHERE (T0.[DocDate] BETWEEN @FechaIni AND @FechaFin )  and T0.[CardName] NOT in ('FARMATODO,C.A.')  
+GROUP BY T0.[U_SALESMAN] ) AS  DEVOLUCION  ON  INVOICE.RUTA = DEVOLUCION.RUTA)
+UNION ALL
+
+(SELECT CASE 
+WHEN QUOTEFARMASUM.RUTA  IS NULL THEN INVOICEFARMASUM.RUTA ELSE QUOTEFARMASUM.RUTA
+END AS 'Ruta de Ventas',
+CASE 
+WHEN QUOTEFARMASUM.RUTA IS NULL THEN ROUND(COALESCE(INVOICEFARMASUM.RESULTADO,0)-COALESCE(DEVOLUCIONFARMASUM.RESULTADO,0),0) 
+WHEN INVOICEFARMASUM.RUTA IS NULL  THEN ROUND(COALESCE(QUOTEFARMASUM.RESULTADO,0)-COALESCE(DEVOLUCIONFARMASUM.RESULTADO,0),0)  
+ELSE ROUND(QUOTEFARMASUM.RESULTADO+INVOICEFARMASUM.RESULTADO-DEVOLUCIONFARMASUM.RESULTADO,0)  
+END AS "Resultado de Ventas" 
+FROM
+
+(SELECT INVOICEFARMA.RUTA AS 'RUTA', SUM(INVOICEFARMA.RESULTADO) AS 'RESULTADO' FROM  (SELECT T0.[U_SALESMAN] AS 'RUTA',  
+CASE WHEN T2.[UgpEntry] = 10 THEN SUM(T1.[Quantity]) / 20 
+WHEN T2.[UgpEntry] = 11 THEN SUM(T1.[Quantity]) / 25 
+WHEN T2.[UgpEntry] = 12 THEN SUM(T1.[Quantity]) / 50 
+END   AS 'RESULTADO' 
+FROM OINV T0 INNER JOIN INV1 T1 ON T0.[DocEntry] = T1.[DocEntry] INNER JOIN OITM T2 ON T1.[ItemCode] = T2.[ItemCode] 
+WHERE [CardName] = 'FARMATODO,C.A.' AND T0.[DocDate] BETWEEN @FechaIni AND @FechaFin  AND T1.Quantity>0
+GROUP BY T0.[U_SALESMAN], T2.[UgpEntry]) AS INVOICEFARMA GROUP BY INVOICEFARMA.RUTA ) AS INVOICEFARMASUM
+
+FULL OUTER JOIN 
+
+
+(SELECT QUOTEFARMA.RUTA AS 'RUTA', SUM(QUOTEFARMA.RESULTADO) AS 'RESULTADO' FROM   ( SELECT T0.[U_SALESMAN] AS 'RUTA',
+CASE WHEN T2.[UgpEntry] = 10 THEN SUM(T1.[Quantity]) / 20  
+WHEN T2.[UgpEntry] = 11 THEN SUM(T1.[Quantity]) / 25  
+WHEN T2.[UgpEntry] = 12 THEN SUM(T1.[Quantity]) / 50 END   AS 'RESULTADO' 
+FROM OQUT T0  INNER JOIN QUT1 T1 ON T0.[DocEntry] = T1.[DocEntry] INNER JOIN OITM T2 ON T1.[ItemCode] = T2.[ItemCode] 
+WHERE [CardName] = 'FARMATODO,C.A.' AND T0.[DocDate] BETWEEN @FechaIni AND @FechaFin  AND (T0."CANCELED" = 'N') AND(T0."DocStatus" = 'O' ) AND T1.Quantity>0
+GROUP BY T0.[U_SALESMAN], T2.[UgpEntry]) AS QUOTEFARMA GROUP BY QUOTEFARMA.RUTA ) AS QUOTEFARMASUM ON INVOICEFARMASUM.RUTA = QUOTEFARMASUM.RUTA
+
+
+FULL OUTER JOIN 
+
+(SELECT DEVOLUCIONFARMA.RUTA AS 'RUTA', SUM(DEVOLUCIONFARMA.RESULTADO) AS 'RESULTADO' FROM  (SELECT T0.[U_SALESMAN] AS 'RUTA',  
+CASE WHEN T2.[UgpEntry] = 10 THEN SUM(T1.[Quantity]) / 20 
+WHEN T2.[UgpEntry] = 11 THEN SUM(T1.[Quantity]) / 25 
+WHEN T2.[UgpEntry] = 12 THEN SUM(T1.[Quantity]) / 50 END   AS 'RESULTADO'
+FROM ORIN T0  INNER JOIN RIN1 T1 ON T0.[DocEntry] = T1.[DocEntry] INNER JOIN OITM T2 ON T1.[ItemCode] = T2.[ItemCode]  
+WHERE [CardName] = 'FARMATODO,C.A.' AND T0.[DocDate] BETWEEN @FechaIni AND @FechaFin  AND T0.[DocDate] >= '2022-01-31'
+GROUP BY T0.[U_SALESMAN] , T2.[UgpEntry] ) AS  DEVOLUCIONFARMA GROUP BY DEVOLUCIONFARMA.RUTA) AS DEVOLUCIONFARMASUM ON INVOICEFARMASUM.RUTA = DEVOLUCIONFARMASUM.RUTA)
+
+
+create table #cuota (num_cli nvarchar(40), enero numeric(38,2), febrero numeric(38,2), marzo numeric(38,2) , abril numeric(38,2), mayo numeric(38,2), junio numeric(38,2), julio numeric(38,2), agosto numeric(38,2), septiembre numeric(38,2), octubre numeric(38,2), noviembre numeric(38,2), diciembre numeric(38,2) );
+
+insert into #cuota(num_cli, enero, febrero, marzo, abril, mayo, junio, julio, agosto, septiembre, octubre, noviembre, diciembre)
+
+SELECT 
+
+CASE 
+WHEN T0.[U_SlpName]='18-Daniel Martinez' THEN 'RUTA 18: ORIENTE'
+WHEN T0.[U_SlpName]='Andres Tovar' THEN 'RUTA 05: CADENAS ZULIA'
+WHEN T0.[U_SlpName]='Barquisimeto' THEN 'RUTA 04: BARQUISIMETO'
+WHEN T0.[U_SlpName]='Dispramar' THEN 'RUTA 14: DISPRAMAR'
+WHEN T0.[U_SlpName]='Distribuidores Zulia' THEN 'RUTA 16: DISTRIBUIDORES ZULIA'
+WHEN T0.[U_SlpName]='Falcón' THEN 'RUTA 15: FALCÓN'
+WHEN T0.[U_SlpName]='Farmatodo' THEN 'RUTA 20: FARMATODO'
+WHEN T0.[U_SlpName]='Katlyn Paz' THEN 'RUTA 02: OFICINA'
+WHEN T0.[U_SlpName]='Keyla Rosales' THEN 'RUTA 03: CARACAS ESTE'
+WHEN T0.[U_SlpName]='Larry Villalta' THEN 'RUTA 09: ANDES'
+WHEN T0.[U_SlpName]='Martin Romero' THEN 'RUTA 17: CENTRO'
+WHEN T0.[U_SlpName]='Ruta 13' THEN 'RUTA 13: CARACAS OESTE'
+END AS 'RUTA'
+
+, SUM(T1.[U_Quota_01]) AS "ENERO", SUM(T1.[U_Quota_02]) AS "FEBRERO", SUM(T1.[U_Quota_03]) AS "MARZO", SUM(T1.[U_Quota_04]) AS "ABRIL", SUM(T1.[U_Quota_05]) AS "MAYO", SUM(T1.[U_Quota_06]) AS "JUNIO", SUM(T1.[U_Quota_07]) AS "JULIO", SUM(T1.[U_Quota_08]) AS "AGOSTO", SUM(T1.[U_Quota_09]) AS "SEPTIEMBRE", SUM(T1.[U_Quota_10]) AS "OCTUBRE", SUM(T1.[U_Quota_11]) AS "NOVIEMBRE", SUM(T1.[U_Quota_12]) AS "DICIEMRE"
+FROM [dbo].[@ASA_QUOTAH]  T0
+INNER JOIN [dbo].[@ASA_QUOTAD] T1 ON T0.Code = T1.Code
+WHERE T0.[U_Year]= DATEPART(yyyy,@FechaFin)
+GROUP BY T0.[U_SlpName] 
+
+select T1.num_cli  as "Ruta de Ventas", CASE 
+WHEN DATEPART(mm,@FechaFin)=1 THEN enero
+WHEN DATEPART(mm,@FechaFin)=2 THEN febrero
+WHEN DATEPART(mm,@FechaFin)=3 THEN marzo
+WHEN DATEPART(mm,@FechaFin)=4 THEN abril
+WHEN DATEPART(mm,@FechaFin)=5 THEN mayo
+WHEN DATEPART(mm,@FechaFin)=6 THEN junio
+WHEN DATEPART(mm,@FechaFin)=7 THEN julio
+WHEN DATEPART(mm,@FechaFin)=8 THEN agosto
+WHEN DATEPART(mm,@FechaFin)=9 THEN septiembre
+WHEN DATEPART(mm,@FechaFin)=10 THEN octubre
+WHEN DATEPART(mm,@FechaFin)=11 THEN noviembre
+WHEN DATEPART(mm,@FechaFin)=12 THEN diciembre
+END AS 'Cuota de Ventas',  T1.vendido as "Vendido", 
+
+CASE 
+WHEN DATEPART(mm,@FechaFin)=1 THEN ((CONVERT(float,T1.vendido)) / CONVERT(float,enero))*100
+WHEN DATEPART(mm,@FechaFin)=2 THEN ((CONVERT(float,T1.vendido)) / CONVERT(float,febrero))*100
+WHEN DATEPART(mm,@FechaFin)=3 THEN ((CONVERT(float,T1.vendido)) / CONVERT(float,marzo))*100
+WHEN DATEPART(mm,@FechaFin)=4 THEN ((CONVERT(float,T1.vendido)) / CONVERT(float,abril))*100
+WHEN DATEPART(mm,@FechaFin)=5 THEN ((CONVERT(float,T1.vendido)) / CONVERT(float,mayo))*100
+WHEN DATEPART(mm,@FechaFin)=6 THEN ((CONVERT(float,T1.vendido)) / CONVERT(float,julio))*100
+WHEN DATEPART(mm,@FechaFin)=7 THEN ((CONVERT(float,T1.vendido)) / CONVERT(float,junio))*100
+WHEN DATEPART(mm,@FechaFin)=8 THEN ((CONVERT(float,T1.vendido)) / CONVERT(float,agosto))*100
+WHEN DATEPART(mm,@FechaFin)=9 THEN ((CONVERT(float,T1.vendido)) / CONVERT(float,septiembre))*100
+WHEN DATEPART(mm,@FechaFin)=10 THEN ((CONVERT(float,T1.vendido)) / CONVERT(float,octubre))*100
+WHEN DATEPART(mm,@FechaFin)=11 THEN ((CONVERT(float,T1.vendido)) / CONVERT(float,noviembre))*100
+WHEN DATEPART(mm,@FechaFin)=12 THEN ((CONVERT(float,T1.vendido)) / CONVERT(float,diciembre))*100
+END AS '% de Cumplimiento' 
+ 
+ from #ventas T1
+
+LEFT JOIN #cuota T2 on T2.num_cli = T1.num_cli 
+
+
+
+
+

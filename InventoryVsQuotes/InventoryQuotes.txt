@@ -1,0 +1,54 @@
+DECLARE @mydate datetime
+SET @mydate = GETDATE()
+
+
+create table #inventario (num_cli nvarchar(40), almacenado numeric(38,2));
+
+insert into #inventario(num_cli, almacenado)
+
+SELECT T0.[ItemCode] , SUM(T1.[OnHand])
+
+FROM
+
+OITM T0 left outer JOIN OITW T1 ON T0.ItemCode = T1.ItemCode
+
+left outer JOIN OITB T2 ON T0.ItmsGrpCod = T2.ItmsGrpCod
+
+left outer join por1 t3 on t3.itemcode=t0.itemcode
+
+left outer join opor t4 on t4.docentry=t3.docentry
+
+WHERE (T1.[WhsCode]='ALM-1001' OR T1.[WhsCode]='ALM-1002' OR T1.[WhsCode]='ALM-1003')  AND (T2.[ItmsGrpNam]='VASOS POLIPROPILENO' OR T2.[ItmsGrpNam]='VASOS POLIESTIRENO'  OR T2.[ItmsGrpNam]='PLATOS'  OR T2.[ItmsGrpNam]='TAPAS'  OR T2.[ItmsGrpNam]='PITILLOS' OR T2.[ItmsGrpNam]='LINEA ALEGRÍA' OR T2.[ItmsGrpNam]='HELADERIA' )
+
+GROUP BY T0.ItemCode 
+
+create table #cotizaciones (num_cli nvarchar(40), cotizado numeric(38,2));
+
+insert into #cotizaciones(num_cli, cotizado)
+
+SELECT TOTALES.PRODUCTO AS "PRODUCTO", SUM(TOTALES.RESULTADO) AS "TOTAL" FROM (
+
+SELECT  T1.[ItemCode] AS 'PRODUCTO', SUM(T1.[Quantity]) AS 'RESULTADO'
+FROM OQUT T0  INNER JOIN QUT1 T1 ON T0.[DocEntry] = T1.[DocEntry]  WHERE  (T0.[DocDate] BETWEEN (   DATEADD(month, DATEDIFF(month, 0, @mydate), 0) ) AND (EOMONTH(@mydate))  ) AND (T0."CANCELED" = 'N') AND (T0."DocStatus" = 'O' ) and T0.[CardName] NOT in ('FARMATODO,C.A.') AND T1.Quantity>0  GROUP BY T0.[U_SALESMAN], T1.[ItemCode]
+
+
+UNION ALL
+
+
+SELECT QUOTEFARMA.PRODUCTO AS 'PRODUCTO', SUM(QUOTEFARMA.RESULTADO) AS 'RESULTADO' FROM   (SELECT T1.[ItemCode] AS 'PRODUCTO', 
+CASE WHEN T2.[UgpEntry] = 10 THEN SUM(T1.[Quantity]) / 20  
+WHEN T2.[UgpEntry] = 11 THEN SUM(T1.[Quantity]) / 25  
+WHEN T2.[UgpEntry] = 12 THEN SUM(T1.[Quantity]) / 50 END   AS 'RESULTADO' 
+FROM OQUT T0  INNER JOIN QUT1 T1 ON T0.[DocEntry] = T1.[DocEntry] INNER JOIN OITM T2 ON T1.[ItemCode] = T2.[ItemCode] 
+WHERE [CardName] = 'FARMATODO,C.A.' AND (T0.[DocDate] BETWEEN (   DATEADD(month, DATEDIFF(month, 0, @mydate), 0) ) AND (EOMONTH(@mydate))  ) AND (T0."CANCELED" = 'N') AND(T0."DocStatus" = 'O' ) AND T1.Quantity>0 
+GROUP BY T1.[ItemCode], T2.[UgpEntry]) AS QUOTEFARMA GROUP BY QUOTEFARMA.PRODUCTO
+
+
+ ) as TOTALES GROUP BY TOTALES.PRODUCTO
+
+
+
+
+select T1.num_cli  as "Producto", ROUND(COALESCE(T1.almacenado,0)-COALESCE(T2.cotizado,0),0)  as "Disponible"  from #inventario T1
+
+LEFT JOIN #cotizaciones T2 on T2.num_cli = T1.num_cli

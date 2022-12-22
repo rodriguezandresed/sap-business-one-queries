@@ -1,0 +1,166 @@
+create table #inventariocarton (num_cli nvarchar(40), almacenado numeric(38,2), tipo numeric(38,2));
+
+insert into #inventariocarton(num_cli, almacenado, tipo)
+
+SELECT T0.[ItemCode] , SUM(T1.[OnHand]),
+
+  CASE
+  WHEN T0.[ItemCode] LIKE '%167SS%' THEN 11
+    WHEN T0.[ItemCode] LIKE '%107SS ALEGR%' THEN 1
+	WHEN T0.[ItemCode] LIKE '%57SS PP2 MANUAL%' THEN 13
+	WHEN T0.[ItemCode] LIKE '%67SS PP2 MANUAL%' THEN 14
+	WHEN T0.[ItemCode] LIKE '%77SS PP2%' THEN 7
+	WHEN T0.[ItemCode] LIKE '%Z-67%' THEN 15
+	WHEN T0.[ItemCode] LIKE '%Z-89%' THEN 16
+	WHEN T0.[ItemCode] LIKE '%Z-8%' THEN 17
+	WHEN T0.[ItemCode] LIKE '%Z9CITO%' THEN 17
+	WHEN T0.[ItemCode] LIKE '%caja 77ss%' THEN 2
+    WHEN T0.[ItemCode] LIKE '%caja 107ss%' THEN 3
+	WHEN T0.[ItemCode] LIKE '%caja 147ss%' THEN 4
+	WHEN T0.[ItemCode] LIKE '%57SS%' THEN 5
+    WHEN T0.[ItemCode] LIKE '%67SS%' THEN 6
+	WHEN T0.[ItemCode] LIKE '%77SS%' THEN 18
+	WHEN T0.[ItemCode] LIKE '%107SS%' THEN 8
+	WHEN T0.[ItemCode] LIKE '%127SS%' THEN 9
+	WHEN T0.[ItemCode] LIKE '%147SS%' THEN 10
+	WHEN T0.[ItemCode] LIKE '%227SS%' THEN 12
+	
+  END as tipo
+
+FROM
+
+OITM T0 left outer JOIN OITW T1 ON T0.ItemCode = T1.ItemCode
+
+left outer JOIN OITB T2 ON T0.ItmsGrpCod = T2.ItmsGrpCod
+
+left outer join por1 t3 on t3.itemcode=t0.itemcode
+
+left outer join opor t4 on t4.docentry=t3.docentry
+
+WHERE T1.[WhsCode]='ALM-1007'  AND (T2.[ItmsGrpNam]='CARTON  (PP2)' OR T2.[ItmsGrpNam]='CARTON POLIESTIRENO'  OR T2.[ItmsGrpNam]='CARTON POLIPROPILENO') AND T1.[OnHand] > 0
+
+GROUP BY T0.ItemCode 
+
+
+create table #inventariobobina (num_cli nvarchar(40), almacenado numeric(38,2), tipo numeric(38,2));
+
+insert into #inventariobobina(num_cli, almacenado, tipo)
+
+SELECT T0.[ItemCode] , SUM(T1.[OnHand]),
+
+  CASE
+    WHEN T0.[ItemCode] LIKE '%107SS ALEGR%' THEN 1
+	WHEN T0.[ItemCode] LIKE '%167SS%' THEN 11
+	WHEN T0.[ItemCode] LIKE '%7oz%' THEN 2
+    WHEN T0.[ItemCode] LIKE '%10oz%' THEN 3
+	WHEN T0.[ItemCode] LIKE '%14oz%' THEN 4
+	WHEN T0.[ItemCode] LIKE '%57SS%' THEN 5
+    WHEN T0.[ItemCode] LIKE '%67SS%' THEN 6
+	WHEN T0.[ItemCode] LIKE '%77SS%' THEN 7
+	WHEN T0.[ItemCode] LIKE '%107SS%' THEN 8
+	WHEN T0.[ItemCode] LIKE '%127SS%' THEN 9
+	WHEN T0.[ItemCode] LIKE '%147SS%' THEN 10
+	WHEN T0.[ItemCode] LIKE '%227SS%' THEN 12
+	
+  END as tipo
+
+FROM
+
+OITM T0 left outer JOIN OITW T1 ON T0.ItemCode = T1.ItemCode
+
+left outer JOIN OITB T2 ON T0.ItmsGrpCod = T2.ItmsGrpCod
+
+left outer join por1 t3 on t3.itemcode=t0.itemcode
+
+left outer join opor t4 on t4.docentry=t3.docentry
+
+WHERE T1.[WhsCode]='ALM-1007'  AND (T2.[ItmsGrpNam]='CARTON (PP2)' OR T2.[ItmsGrpNam]='BOLSAS PP2'  OR T2.[ItmsGrpNam]='BOLSAS POLIPROPILENO' OR T2.[ItmsGrpNam]='BOLSAS POLIESTIRENO') AND T1.[OnHand] > 0
+
+GROUP BY T0.ItemCode 
+
+select inventario.tipo as "Producto", inventario.carton as "Inventario de Cartones", inventario.bobina as "Inventario de Bobinas",
+
+CASE WHEN inventario.carton > inventario.bobina then inventario.bobina
+    else inventario.carton end as "Produccion Disponible"
+
+
+
+
+ from
+(
+select 
+
+  CASE
+	WHEN T1.tipo = 1 then 'Alegria 107SS SIN IMAGEN'
+    WHEN T1.tipo = 2 then 'Alegria 77SS'
+	WHEN T1.tipo = 3 then 'Alegria 107SS'
+	WHEN T1.tipo = 4 then 'Alegria 147SS'
+	WHEN T1.tipo = 5 then '57SS'
+	WHEN T1.tipo = 6 then '67SS'
+	WHEN T1.tipo = 7 then '77SS'
+	WHEN T1.tipo = 8 then '107SS'
+	WHEN T1.tipo = 9 then '127SS'
+	WHEN T1.tipo = 10 then '147SS'
+	WHEN T1.tipo = 11 then '167SS'
+	WHEN T1.tipo = 12 then '227SS'
+	WHEN T1.tipo = 13 then '57SS EMPAQUE MANUAL'
+	WHEN T1.tipo = 14 then '67SS EMPAQUE MANUAL'
+	WHEN T1.tipo = 15 then 'USANDO Z-67'
+	WHEN T1.tipo = 16 then 'USANDO Z-89'
+	WHEN T1.tipo = 17 then 'USANDO Z-8'
+	WHEN T1.tipo = 18 then '77SS EMPAQUE MANUAL'
+	
+
+	
+  END as tipo
+
+
+, T1.almacenado as 'carton',  
+
+  CASE
+	WHEN T1.tipo = 1 then  (  select ROUND(SUM(w.[OnHand])*11.6,0) from OITM q left outer JOIN OITW w ON q.ItemCode = w.ItemCode
+left outer JOIN OITB e ON q.ItmsGrpCod = e.ItmsGrpCod left outer join por1 r on r.itemcode=q.itemcode left outer join opor y on y.docentry=r.docentry
+WHERE w.[WhsCode]='ALM-1007'  AND ( e.[ItmsGrpNam]='BOLSAS PP2'  OR e.[ItmsGrpNam]='BOLSAS POLIPROPILENO' OR e.[ItmsGrpNam]='BOLSAS POLIESTIRENO') AND w.[OnHand] > 0 AND q.ItemCode LIKE '%10oz%'
+GROUP BY q.ItemCode )
+	
+    WHEN T1.tipo = 2 then  ROUND(T2.almacenado*6.7,0)
+	WHEN T1.tipo = 3 then  ROUND(T2.almacenado*11.6,0)
+	WHEN T1.tipo = 4 then ROUND(T2.almacenado*10.5,0)
+	WHEN T1.tipo = 5 then ROUND(T2.almacenado*5.2,0)
+	WHEN T1.tipo = 6 then  ROUND(T2.almacenado*5.2,0)
+	WHEN T1.tipo = 7 then  ROUND(T2.almacenado*5.2,0)
+	WHEN T1.tipo = 8 then  ROUND(T2.almacenado*8.2,0)
+	WHEN T1.tipo = 9 then  ROUND(T2.almacenado*8.2,0)
+	WHEN T1.tipo = 10 then  ROUND(T2.almacenado*7.5,0)
+	WHEN T1.tipo = 11 then  ROUND(T2.almacenado*6.7,0)
+	WHEN T1.tipo = 12 then  ROUND(T2.almacenado*5.8,0)
+	
+	
+	WHEN T1.tipo = 13 then  (  select ROUND(SUM(w.[OnHand])*5.2,0) from OITM q left outer JOIN OITW w ON q.ItemCode = w.ItemCode
+left outer JOIN OITB e ON q.ItmsGrpCod = e.ItmsGrpCod left outer join por1 r on r.itemcode=q.itemcode left outer join opor y on y.docentry=r.docentry
+WHERE w.[WhsCode]='ALM-1007'  AND ( e.[ItmsGrpNam]='BOLSAS PP2'  OR e.[ItmsGrpNam]='BOLSAS POLIPROPILENO' OR e.[ItmsGrpNam]='BOLSAS POLIESTIRENO') AND w.[OnHand] > 0 AND q.ItemCode LIKE '% 57SS%'
+GROUP BY q.ItemCode )
+	
+
+	
+	WHEN T1.tipo = 14 then  (  select ROUND(SUM(w.[OnHand])*5.2,0) from OITM q left outer JOIN OITW w ON q.ItemCode = w.ItemCode
+left outer JOIN OITB e ON q.ItmsGrpCod = e.ItmsGrpCod left outer join por1 r on r.itemcode=q.itemcode left outer join opor y on y.docentry=r.docentry
+WHERE w.[WhsCode]='ALM-1007'  AND (e.[ItmsGrpNam]='BOLSAS PP2'  OR e.[ItmsGrpNam]='BOLSAS POLIPROPILENO' OR e.[ItmsGrpNam]='BOLSAS POLIESTIRENO') AND w.[OnHand] > 0 AND q.ItemCode LIKE '% 67SS%'
+GROUP BY q.ItemCode )
+	
+	WHEN T1.tipo = 15 then ROUND(T2.almacenado,0)
+	WHEN T1.tipo = 16 then ROUND(T2.almacenado,0)
+	WHEN T1.tipo = 17 then ROUND(T2.almacenado,0)
+	WHEN T1.tipo = 18 then  (  select ROUND(SUM(w.[OnHand])*5.2,0) from OITM q left outer JOIN OITW w ON q.ItemCode = w.ItemCode
+left outer JOIN OITB e ON q.ItmsGrpCod = e.ItmsGrpCod left outer join por1 r on r.itemcode=q.itemcode left outer join opor y on y.docentry=r.docentry
+WHERE w.[WhsCode]='ALM-1007'  AND (e.[ItmsGrpNam]='BOLSAS PP2'  OR e.[ItmsGrpNam]='BOLSAS POLIPROPILENO' OR e.[ItmsGrpNam]='BOLSAS POLIESTIRENO') AND w.[OnHand] > 0 AND q.ItemCode LIKE '% 77SS%'
+GROUP BY q.ItemCode )
+	
+	
+
+	
+  END as bobina
+
+  from #inventariocarton T1
+
+LEFT JOIN #inventariobobina T2 on T2.tipo = T1.tipo) as inventario

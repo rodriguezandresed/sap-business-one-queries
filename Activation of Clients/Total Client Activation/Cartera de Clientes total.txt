@@ -1,6 +1,6 @@
 
 
-SELECT T0.[U_ORN_RUTAS_VENTAS] as "RUTA",  CASE 
+SELECT T0.[U_SALESMAN] as "RUTA",  CASE 
 WHEN T0.[GroupCode]=100 THEN 'CADENA SUPERMERCADO'
 WHEN T0.[GroupCode]=101 THEN 'MATERIA PRIMA'
 WHEN T0.[GroupCode]=102 THEN 'PTES PIEZAS Y REPUES'
@@ -18,4 +18,4 @@ WHEN T0.[GroupCode]=113 THEN 'ESPECIAL'
 WHEN T0.[GroupCode]=114 THEN 'COMIDA/VIVERES'
 WHEN T0.[GroupCode]=115 THEN 'ARTICULOS DE OFICINA'
 WHEN T0.[GroupCode]=116 THEN 'TRANSPORTE'
-END AS 'CATEGORIA', count(T0.[CardName]) as "Clientes" FROM OCRD T0 WHERE T0.[U_ORN_RUTAS_VENTAS] is not null AND T0.[GroupCode] not in ('102') AND T0.[GroupCode] not in ('103') AND T0.[GroupCode] not in ('105')   GROUP BY T0.[U_ORN_RUTAS_VENTAS], T0.[GroupCode]
+END AS 'CATEGORIA', count(T0.[CardName]) as "Clientes" FROM OCRD T0 WHERE T0.[U_SALESMAN] is not null AND T0.[GroupCode] not in ('102') AND T0.[GroupCode] not in ('103') AND T0.[GroupCode] not in ('105')   GROUP BY T0.[U_SALESMAN], T0.[GroupCode]
