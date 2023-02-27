@@ -1,0 +1,30 @@
+
+create table #rutadtw (wildcard nvarchar(40),ruta nvarchar(80) );
+
+insert into #rutadtw(wildcard, ruta)
+
+
+
+ SELECT '1', T0.[U_ZU_RUTA] 
+FROM [dbo].[@ZUPLA_RUTAS] T0 inner join [dbo].[@ZUPLA_CLIENTES] T1 ON T0.[U_ZU_CLIENTE] = T1.[Code] inner join [dbo].[@ZUPLA_SUCURSAL] T2 ON T0.[U_ZU_SUCURSALES] = T2.[Code] 
+ WHERE T2.[Name] =$[ODLN.ShipToCode] AND T1.[Name] =$[ODLN.CardName]
+
+
+create table #rutamanual (wildcard nvarchar(40),ruta nvarchar(80) );
+
+insert into #rutamanual(wildcard, ruta)
+
+SELECT '1', T0.[U_ZU_RUTA] 
+FROM [dbo].[@ZUPLA_RUTAS] T0  
+ WHERE T0.[U_ZU_SUCURSALES] =$[ODLN.ShipToCode] AND T0.[U_ZU_CLIENTE] =$[ODLN.CardName]
+ 
+ 
+select CASE
+
+WHEN t1.ruta is null then t2.ruta
+WHEN t2.ruta is null then t1.ruta
+end
+
+from #rutadtw T1
+
+FULL OUTER JOIN #rutamanual T2 on T2.wildcard = T1.wildcard 

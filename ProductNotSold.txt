@@ -1,0 +1,8 @@
+
+
+SELECT T0.DocNum AS 'Oferta de Venta', T0.CardName, T1.[ItemCode] AS 'Producto', SUM(T1.[Quantity]) as "Cantidad"
+FROM OQUT T0  INNER JOIN QUT1 T1 ON T0.[DocEntry] = T1.[DocEntry]  LEFT JOIN RDR1 T3 ON T3.BaseEntry=T0.DocEntry and t3.baseline=t1.linenum LEFT JOIN ORDR T2 ON T2.DocEntry=T3.DocEntry
+
+
+
+WHERE (T0.[DocDate] BETWEEN [%0] AND [%1]) AND (T0."CANCELED" = 'N') AND (T0."DocStatus" = 'C' ) and T0.[CardName] NOT in ('FARMATODO,C.A.') AND T1.Quantity>0 AND T3.Quantity is null GROUP BY T0.DocNum, T1.[ItemCode], T0.CardName

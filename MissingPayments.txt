@@ -1,0 +1,57 @@
+DECLARE @mydate datetime
+SET @mydate = GETDATE()
+
+create table #pagos (cliente nvarchar(160), numfactura nvarchar(160), ruta nvarchar(160), ffactura datetime, tfactura numeric(38,2), tfacturausd numeric(38,2), pago numeric(38,2), orden numeric(38,2), tasaorion numeric(38,2) );
+
+insert into #pagos(cliente, numfactura, ruta, ffactura, tfactura, tfacturausd, pago, orden, tasaorion)
+
+(SELECT DISTINCT t3.CardName as "CLIENTE",
+T0.DOCNUM AS "NUMFACTURA", T0.U_SALESMAN AS "RUTA",
+T0.DOCDATE AS "FFACTURA",
+T0.DOCTOTAL AS "TFACTURA",
+CASE WHEN T0.U_RATE IS NULL OR T0.U_RATE = 0 THEN T0.DocTotal/T8.Rate ELSE T0.DocTotal/T0.U_RATE END as "TFACTURAUSD",
+CASE WHEN T7.DOCENTRY IS NOT NULL THEN 0
+ELSE
+ (T1.WtAppld+T1.SumApplied)  end as "PAGO",
+ T7.DocTotal as "ORDEN", T0.U_RATE AS "TASAORION"
+
+
+FROM 
+
+ORCT T2 right JOIN RCT2 T1 ON T2.DocEntry=T1.DocNum
+
+right JOIN OINV T0 ON T1.DocEntry=T0.DocEntry AND T1.Invtype = 13 
+
+left join ocrd t3 on t3.CardCode=t0.CardCode 
+
+left join ocrg t4 on t4.GroupCode=t3.GroupCode 
+
+left JOIN INV1 T5 ON T0.[DocEntry] = T5.[DocEntry] 
+
+left join RIN1 T6 on T6.[BaseEntry] = T5.Docentry and T6.[BaseLine] = T5.[LineNum] and T6.[BaseType] =13 
+
+left JOIN ORIN T7 ON T6.[DocEntry] = T7.[DocEntry] 
+
+left join ORTT T8 on T0.DocDate = T8.RateDate  
+
+
+where ( T0.[DocDate] <= @mydate ) and T0.[DocType] NOT in ('S') and T2.Canceled NOT in ('Y') )
+
+create table #tasa (ffactura datetime, ftasa datetime, tasausd numeric(38,2) );
+
+insert into #tasa(ffactura, ftasa, tasausd)
+
+(SELECT DISTINCT T0.DocDate as "FFACTURA", T1.RateDate AS "FRATE" , T1.Rate AS "RATE" FROM OINV T0 left join ORTT T1 on T0.DocDate = T1.RateDate  
+where ( T0.[DocDate] <= @mydate ) and T0.[DocType] NOT in ('S') and T1.Currency = 'USD')
+
+SELECT RESUME.CLIENTE, RESUME.NUMFACTURA, RESUME.RUTA as "Ruta de Ventas", RESUME.TFACTURA "Total en Bs" ,RESUME.TFACTURAUSD "Total en $",  RESUME.PAGADO "Pagado en Bs", RESUME.PAGADOUSD "Pagado en USD", RESUME.DEBEN "Deben en BS", RESUME.DEBENUSD "Deben en USD" FROM (
+
+SELECT DATA.CLIENTE as "CLIENTE", DATA.NUMFACTURA AS "NUMFACTURA",  DATA.RUTA AS "RUTA", DATA.TFACTURA AS "TFACTURA", DATA.TFACTURAUSD AS "TFACTURAUSD", COALESCE(sum(DATA.PAGO),0) + COALESCE(SUM(DATA.ORDEN),0) as "PAGADO", 
+COALESCE(sum(DATA.PAGOUSD),0) + COALESCE(SUM(DATA.ORDENUSD),0) as "PAGADOUSD", DATA.TFACTURA -(COALESCE(sum(DATA.PAGO),0) +COALESCE(SUM(DATA.ORDEN),0)) AS "DEBEN", DATA.TFACTURAUSD -(COALESCE(sum(DATA.PAGOUSD),0) +COALESCE(SUM(DATA.ORDENUSD),0)) AS "DEBENUSD" FROM
+
+(
+
+
+select T1.cliente as "CLIENTE", T1.numfactura AS "NUMFACTURA", T1.ruta as "RUTA", T1.ffactura AS "FFACTURA" ,T1.tfactura AS "TFACTURA", T1.tfacturausd "TFACTURAUSD", T1.pago "PAGO", CASE WHEN T1.tasaorion is NULL or T1.tasaorion=0 then t1.pago/t2.tasausd ELSE t1.pago/t1.tasaorion end as "PagoUSD" , T1.orden "ORDEN", CASE WHEN T1.tasaorion is NULL or T1.tasaorion=0 then t1.orden/t2.tasausd ELSE t1.orden/t1.tasaorion end as "ORDENUSD",  T2.tasausd, t1.tasaorion  from #pagos T1 LEFT JOIN #tasa T2 on T2.FFACTURA = T1.FFACTURA 
+
+) AS DATA GROUP BY DATA.CLIENTE, DATA.NUMFACTURA, DATA.TFACTURA, DATA.TFACTURAUSD, DATA.RUTA ) as RESUME where RESUME.DEBENUSD > 0.1

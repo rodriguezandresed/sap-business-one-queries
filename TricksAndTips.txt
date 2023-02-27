@@ -1,0 +1,119 @@
+/*SELECT FROM [DBO].[JDT1] T0*/
+DECLARE @FechaIni datetime
+/*WHERE*/
+SET @FechaIni = /*T0.[RefDate]*/ '[%0]'
+
+/*SELECT FROM [DBO].[JDT1] T1*/
+DECLARE @FechaFin datetime
+/*WHERE*/
+SET @FechaFin = /*T1.[RefDate]*/'[%1]'
+
+/*SELECT FROM [DBO].[JDT1] T2*/
+DECLARE @FechaAct datetime
+/*WHERE*/
+SET @FechaAct = /*T2.[RefDate]*/ GETDATE()
+
+SELECT T1.[ItemCode] AS 'PRODUCTO', SUM(T1.[Quantity]) AS 'RESULTADO'
+FROM OQUT T0  INNER JOIN QUT1 T1 ON T0.[DocEntry] = T1.[DocEntry]  
+WHERE (T0.[DocDate] between @FechaIni AND @FechaFin ) AND (T0."CANCELED" = 'N') AND (T0."DocStatus" = 'O' ) and T0.[CardName] NOT in ('FARMATODO,C.A.') AND T1.Quantity>0  
+GROUP BY  T1.[ItemCode] 
+
+
+-------------------------------
+
+
+
+SELECT DATEADD(DD,-(DAY(GETDATE() -1)), GETDATE()) AS FirstDate
+SELECT DATEADD(DD,-(DAY(GETDATE())), DATEADD(MM, 1, GETDATE())) AS LastDate
+
+
+SELECT convert(datetime, DATEADD(DD,-(DAY(GETDATE())), DATEADD(MM, 1, GETDATE())), 112) AS LastDate
+
+
+SELECT DATEPART(yyyy,GETDATE())
+
+-----------------------------------------------------
+
+
+create table #inventario (num_cli nvarchar(40), almacenado numeric(38,2));
+
+insert into #inventario(num_cli, almacenado)
+
+first query
+
+create table #cotizaciones (num_cli nvarchar(40), cotizado numeric(38,2));
+
+insert into #cotizaciones(num_cli, cotizado)
+
+2nd query
+
+
+select T1.num_cli  as "Producto", T1.almacenado as "En Almacen", T2.cotizado "Cotizado", (T1.almacenado-T2.cotizado) as "Disponible"  from #inventario T1
+
+LEFT JOIN #cotizaciones T2 on T2.num_cli = T1.num_cli 
+
+
+---------------------
+
+ AVG(month(t0.docdate)) as 'MES'
+ 
+ -------------
+ 
+ cuentas con fechas
+ 
+ SELECT QUOTEFARMA.PRODUCTO AS 'PRODUCTO', SUM(QUOTEFARMA.RESULTADO) AS 'RESULTADO' FROM   (SELECT T1.[ItemCode] AS 'PRODUCTO', 
+CASE WHEN T2.[UgpEntry] = 10 THEN SUM(T1.[Quantity]) / 20  
+WHEN T2.[UgpEntry] = 11 THEN SUM(T1.[Quantity]) / 25  
+WHEN T2.[UgpEntry] = 12 THEN SUM(T1.[Quantity]) / 50 END   AS 'RESULTADO' 
+FROM OQUT T0  INNER JOIN QUT1 T1 ON T0.[DocEntry] = T1.[DocEntry] INNER JOIN OITM T2 ON T1.[ItemCode] = T2.[ItemCode] 
+WHERE [CardName] = 'FARMATODO,C.A.' AND (T0.[DocDate] BETWEEN DATEADD(DD,-(DAY(GETDATE() -1)), GETDATE()) AND DATEADD(DD,-(DAY(GETDATE())), DATEADD(MM, 1, GETDATE())) ) AND (T0."CANCELED" = 'N') AND(T0."DocStatus" = 'O' ) AND T1.Quantity>0 
+GROUP BY T1.[ItemCode], T2.[UgpEntry]) AS QUOTEFARMA GROUP BY QUOTEFARMA.PRODUCTO ) as TOTALES GROUP BY TOTALES.PRODUCTO
+
+
+-------------------
+declarar fecha
+
+
+/*SELECT FROM [DBO].[JDT1] T0*/
+DECLARE @FechaIni datetime
+/*WHERE*/
+SET @FechaIni = /*T0.[RefDate]*/ '[%0]'
+
+/*SELECT FROM [DBO].[JDT1] T1*/
+DECLARE @FechaFin datetime
+/*WHERE*/
+SET @FechaFin = /*T1.[RefDate]*/'[%1]'
+
+/*SELECT FROM [DBO].[JDT1] T2*/
+DECLARE @FechaAct datetime
+/*WHERE*/
+SET @FechaAct = /*T2.[RefDate]*/ GETDATE()
+
+SELECT DATEPART(yyyy,@FechaFin) AS FirstDate
+
+SELECT DATEPART(mm,@FechaFin)
+
+
+-----------------------------------------
+
+query dentro de cuenta
+
+ T1.SumApplied as Paid
+
+
+
+
+
+, (t0.doctotal)-(select sum(q.SumApplied) from rct2 q inner join oinv w on q.docentry = w.docentry where q.DocEntry = t1.DocEntry and q.DocNum <= t2.docnum) as Pending
+
+
+FROM OINV T0 LEFT JOIN RCT2 T1 ON T0.DOCENTRY=T1.DOCENTRY AND T0.OBJTYPE=T1.INVTYPE LEFT JOIN ORCT T2 ON T2.DOCNUM=T1.DOCNUM inner join ocrd t3 on t3.CardCode=t0.CardCode inner join ocrg t4 on t4.GroupCode=t3.GroupCode INNER JOIN INV1 T5 ON T0.[DocEntry] = T5.[DocEntry] left join RIN1 T6 on T6.[BaseEntry] = T5.Docentry and T6.[BaseLine] = T5.[LineNum] and T6.[BaseType] =13 left JOIN ORIN T7 ON T6.[DocEntry] = T7.[DocEntry] 
+
+
+
+where ( T0.[DocDate] >= [%0]) and ( T0.[DocDate] <=[%1] ) and T0.[DocType] NOT in ('S') 
+ order by t0.docdate
+ 
+ 
+
+
